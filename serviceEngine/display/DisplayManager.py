@@ -1,4 +1,7 @@
 import tensorflow as tf
+from webnode.ui import display_output
 
-def send_output(output):
-    pass
+class DisplayManager:
+    @staticmethod
+    def send_output(output):
+        display_output(output)

@@ -1,3 +1,5 @@
+import flask 
+
 def redirect(service, path):
     # call the service given the path
     status, error = service(path)

@@ -2,6 +2,13 @@ import tensorflow as tf
 from inference.InferenceEngine import inference_engine
 from serviceEngine.display.DisplayManager import DisplayManager
 
+class workflow():
+    def load_workflow(workflow_config):
+        pass
+    
+    def execute_workflow():
+        pass
+
 # Load the pre-trained model
 model = tf.keras.models.load_model('path/to/pretrained/model')
 
@@ -19,7 +26,6 @@ output_file.close()
 
 # Send the output to DisplayManager
 output = DisplayManager.send_output(output)
-
 
 # Call the inference engine on the output
 inference_engine(output)
