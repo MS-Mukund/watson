@@ -16,9 +16,8 @@ service via a URL which is taken as an argument.
 from kafka import KafkaProducer, KafkaConsumer
 import json
 import requests
-from flask import Flask, request, jsonify
+from flask import Flask, request,render_template
 
-from PIL import Image
 import base64
 from flask_cors import CORS
 
@@ -27,7 +26,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 cors = CORS(app)
 
-destination_url = 'http://127.0.0.1:6000/display'
+destination_url = 'http://127.0.0.1:6001/display'
 kafka_producer = KafkaProducer(bootstrap_servers='localhost:9092')
 @app.route('/receive_input', methods=['POST'])
 def receive_input():
@@ -127,10 +126,15 @@ def process_text(text_file):
     print("Text data sent to Kafka successfully")
 
 def send_output_to_url(data):
+    print('start of send_output_to_url()', data)
     try:
+        print("before sending data to URL ", data)
         response = requests.post(destination_url, json=data)
         if response.status_code == 200:
             print("Data sent successfully to URL, send_output_to_url()")
+            print("start of render_template")
+            render_template('display.html', data=data)
+            print("end of render_template")
             return response
         else:
             print("Failed to send data to URL:", response.status_code)
@@ -139,10 +143,15 @@ def send_output_to_url(data):
 
 def kafka_consumer():
     consumer = KafkaConsumer('output', bootstrap_servers='localhost:9092')
+    print("start of kafka_consumer()")
     for message in consumer:
+        print("message: ",message)
         try:
+            print("entering try block")
             data = json.loads(message.value.decode('utf-8'))
+            print("before send_output_to_url", data)
             send_output_to_url(data)
+            print("end")
         except Exception as e:
             print("Error processing message:", str(e))
 
