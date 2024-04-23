@@ -8,6 +8,7 @@ app = Flask(__name__)
 cors = CORS(app)
 
 kafka_producer = KafkaProducer(bootstrap_servers='localhost:9092', value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+URL = 'http://127.0.0.1:6001/predict'
 
 @app.route('/receive_output', methods=['POST'])
 def receive_output():
@@ -26,10 +27,10 @@ def receive_output():
     else:
         return "No data received", 400 
 
-def send_input_to_url(data):
+def send_input_to_url(url, data):
     print('start of send_input_to_url()', data)
     try:
-        response = requests.post('http://127.0.0.1:6001/predict', json=data)
+        response = requests.post(url=url, json=data)
         if response.status_code == 200:
             print("Data sent successfully to URL")
         else:
@@ -42,9 +43,10 @@ def kafka_consumer():
     for message in consumer:
         print("message: ",message)
         try:
+            url = URL
             data = message.value     
             print('before send_input_to_url')                  
-            send_input_to_url(data)
+            send_input_to_url(url, data)
         except Exception as e:
             print("Error processing message:", str(e))
 
@@ -54,6 +56,8 @@ if __name__ == "__main__":
     consumer_thread = threading.Thread(target=kafka_consumer)
     consumer_thread.start()
     print("nibba rohit")
+    
+    # Must listen to 
     app.run(port=6000)
     
 

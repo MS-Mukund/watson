@@ -15,6 +15,8 @@ import base64
 app = Flask(__name__)
 cors = CORS(app)
 
+from flask import jsonify
+
 # URL is taken as an argument
 URL = '/predict'
 url_infer = 'http://127.0.0.1:6000/receive_output'
@@ -86,8 +88,11 @@ def send_output(url,data):
 
 
 @app.route('/display', methods=['POST'])
-def display():      
-    print('inside display() ', request.json)    
+def display():    
+    print('start of display, ', request)  
+    print(request.json)
+    
+    # incomplete - send this data to frontend
     return request.json
 
 if __name__ == '__main__':      

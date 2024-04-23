@@ -26,30 +26,21 @@ from flask_cors import CORS
 app = Flask(__name__)
 cors = CORS(app)
 
+'''
+The endpoint url is addded to the HTTP json request (field is destination). 
+Instead of endpoint URL, the url field is set to webEngine URL.
+destination: URL
+url: webEngine
+
+If this doesn't work, use nginx as proxy server to redirect all URLs to webEngine
+'''
+
 destination_url = 'http://127.0.0.1:6001/display'
 kafka_producer = KafkaProducer(bootstrap_servers='localhost:9092')
 @app.route('/receive_input', methods=['POST'])
 def receive_input():
     print('start of receive_input()')
-    # data = request.files
-    # print("Received data:", data)
-    
-    # img = data['image']
-    # # convert image(img) to json
-    # print(img)
-    # data = img_to_json(img)
-    # print(data)
-    
-    # # Check if data is received
-    # if data is not None:
-    #     data_str = json.dumps(data)
-    #     kafka_producer.produce("input", value=data_str)
-    #     kafka_producer.flush()
-    #     print("Data sent to Kafka successfully, receive_input()")
-    #     return "Data received and sent to Kafka successfully", 200
-    # else:
-    #     return "No data received", 400 
-     # Check if any data was included in the request
+   
     if len(request.files) == 0:
         return "No data received", 400
 
@@ -76,7 +67,7 @@ def receive_input():
             return f"Unsupported file type: {file_type}", 400
 
     print('end of receive_input()')
-    return "Data received and sent to Kafka successfully", 200
+    # return "Data received and sent to Kafka successfully", 200
 
 def determine_file_type(filename):
     print('start of determine_file_type()', filename)
