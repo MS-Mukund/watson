@@ -21,7 +21,7 @@ url_infer = 'http://127.0.0.1:6000/receive_output'
 
 model = tf.keras.models.Sequential([
     tf.keras.layers.Flatten(input_shape=(28, 28)),
-    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dense(128, activation='softmax'),
     tf.keras.layers.Dense(10)
     ])
 
