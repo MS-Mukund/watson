@@ -2,7 +2,9 @@ from flask import Flask, request, render_template
 import numpy as np
 import tensorflow as tf
 import sys
+import os
 import requests
+
 # mnist model import
 from keras.datasets import mnist
 from keras.models import load_model
@@ -16,6 +18,8 @@ app = Flask(__name__)
 cors = CORS(app)
 
 from flask import jsonify
+from tensorflow.keras.models import load_model
+
 
 # URL is taken as an argument
 URL = '/predict'
@@ -95,26 +99,36 @@ def display():
     # incomplete - send this data to frontend
     return request.json
 
-if __name__ == '__main__':      
-    # Load the MNIST model
-    (train_X, train_y), (test_X, test_y) = mnist.load_data()
-    
-    ds_train = tf.data.Dataset.from_tensor_slices((train_X, train_y))
-    ds_train = ds_train.shuffle(60000).batch(32)
-    ds_test = tf.data.Dataset.from_tensor_slices((test_X, test_y))
-    ds_test = ds_test.batch(32)
-    
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(0.001),
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
-    )
+if __name__ == '__main__':
+    # check if model is pre-trained and saved ('MNIST_MODEL.keras')  
+    if not os.path.exists('MNIST_MODEL.keras'):  
+        print('training model')
+        # Train the MNIST model
+        (train_X, train_y), (test_X, test_y) = mnist.load_data()
 
-    model.fit(
-        ds_train,
-        epochs=6,
-        validation_data=ds_test,
-    )
+        ds_train = tf.data.Dataset.from_tensor_slices((train_X, train_y))
+        ds_train = ds_train.shuffle(60000).batch(32)
+        ds_test = tf.data.Dataset.from_tensor_slices((test_X, test_y))
+        ds_test = ds_test.batch(32)
+
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(0.001),
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+            metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
+        )
+        
+        model.fit(
+            ds_train,
+            epochs=15,
+            validation_data=ds_test,
+        )
+
+        model.save('MNIST_MODEL.keras')
+        print("model saved to disk")
+    
+    print('loading model')
+    model = load_model('MNIST_MODEL.keras')
+    
     
     app.run(debug=True, port=6001)
     

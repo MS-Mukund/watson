@@ -26,6 +26,13 @@ from flask_cors import CORS
 app = Flask(__name__)
 cors = CORS(app)
 
+import logbook
+logbook.set_datetime_format("local")
+
+import sys
+sys.path.append('..')
+from logs.logger import setup_logger
+
 '''
 The endpoint url is addded to the HTTP json request (field is destination). 
 Instead of endpoint URL, the url field is set to webEngine URL.
@@ -67,7 +74,7 @@ def receive_input():
             return f"Unsupported file type: {file_type}", 400
 
     print('end of receive_input()')
-    # return "Data received and sent to Kafka successfully", 200
+    return "Data received and sent to Kafka successfully", 200
 
 def determine_file_type(filename):
     print('start of determine_file_type()', filename)
@@ -148,6 +155,12 @@ def kafka_consumer():
 
 # Example usage:
 if __name__ == "__main__":
+    # logbook
+    # logger = setup_logger("../central_log.log")
+    # print("WebEngine started")
+    # logger.info("WebEngine started 2")
+    # logger.info("WebEngine started 3")
+
     import threading
     consumer_thread = threading.Thread(target=kafka_consumer)
     consumer_thread.start()
