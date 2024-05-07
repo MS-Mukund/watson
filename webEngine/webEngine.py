@@ -21,6 +21,11 @@ from flask import Flask, request,render_template
 import base64
 from flask_cors import CORS
 
+import threading
+import time
+
+import subprocess
+
 # def img_to_json(img):
     
 app = Flask(__name__)
@@ -29,9 +34,9 @@ cors = CORS(app)
 import logbook
 logbook.set_datetime_format("local")
 
-import sys
-sys.path.append('..')
-from logs.logger import setup_logger
+# import sys
+# sys.path.append('..')
+# from logs.logger import setup_logger
 
 '''
 The endpoint url is addded to the HTTP json request (field is destination). 
@@ -41,29 +46,134 @@ url: webEngine
 
 If this doesn't work, use nginx as proxy server to redirect all URLs to webEngine
 '''
+'''
+ignore this for now
+The endpoint url is addded to the HTTP json request (field is destination). 
+Instead of endpoint URL, the url field is set to webEngine URL.
+destination: URL
+url: webEngine
+
+If this doesn't work, use nginx as proxy server to redirect all URLs to webEngine
+'''
+
+'''
+kafka_msg = {
+    "app_name": <app_name>,
+    "num_instances": Int
+    }
+after receiving the message from DEPLOY_TO_ENGINES_TOPIC topic, 
+dynamically assigns a port to each instance of react app and runs them, 
+(maybe it's better to store the: app_name, app_ID, port in a file)
+
+Now, send a message to "web_deployment_toinf" topic with: 
+{"app_ID": <app_ID>, "app_name": <app_name>}
+  
+later: final output should be displayed in the same webpage, not redirected to backend. 
+'''
+KAFKA_BROKERS = ["localhost:9092"]
+DEPLOY_TO_ENGINES_TOPIC = "Deploy_to_engines"
 
 destination_url = 'http://127.0.0.1:6001/display'
+kafka_producer = KafkaProducer(bootstrap_servers='localhost:9092')
+
+from flask import Flask, render_template, send_from_directory
+import socket  # For finding available port
+import os
+import sys
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+
+
+app = Flask(__name__)
+
+
+# Database connection
+uri = "mongodb+srv://bokkagaru:paadugajala@cluster0.tr0pl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+# Create a new client and connect to the server
+client = MongoClient(uri, server_api=ServerApi('1'))
+db = client.get_database("Web_Engine")
+# relative imports
+sys.path.append('..')
+from util.createEnv import create_env_and_install
+from util.runApp import run_app
+from util.assignPort import give_available_port
+
+PORT = 7002
+
+def serve_react_app(path):
+    # Get an available port and set environment variable for React app
+    available_port = give_available_port()
+    os.environ['PORT'] = str(available_port)
+
+    # Check if requested path matches a React app
+    os.chdir(f"{path}")
+    subprocess.Popen(["npm", "install"])
+    subprocess.Popen(["npm", "start"])
+    os.environ['REACT_APP_WEB_ENGINE_URL'] = f"http://localhost:{PORT}/receive_input"
+        
+    return available_port
+
+def consume_deployments():
+    """
+    Consumer thread function to listen for deployment messages and extract service information.
+    """
+    consumer = KafkaConsumer(DEPLOY_TO_ENGINES_TOPIC, bootstrap_servers=KAFKA_BROKERS)
+
+    for message in consumer:
+        processed_data = json.loads(message.value)
+        print("Message received from Deployment Manager:")
+        print("-" * 40)  # Separator for readability
+
+        # Extract and print app information
+        app_data = processed_data.get("app", {})
+        app_name = app_data.get("name")
+        app_path = app_data.get("path")
+        app_requirements = app_data.get("requirements")
+        app_instances = app_data.get("instances")
+        if app_path:
+            print(f"App Path: {app_path}")
+        if app_requirements:
+            print(f"App Requirements: {app_requirements}")
+        if app_instances:
+            print(f"App Instances: {app_instances}")   
+        
+        # instance_id(created by app_name
+        for _ in range(app_instances):
+            avbl_port = serve_react_app(app_path) 
+                   
+            data = {
+                "app_name": app_name,
+                "app_path": app_path,
+                "port": avbl_port,
+                "status": "running",  # Add status for better record keeping
+                "PID":"pid"
+            }
+            collection = db["Web_Engine_Instances"]  # Connect to the collection
+            collection.insert_one(data)
+        print("-" * 40)  # Separator for readability
+
+# destination_url = 'http://127.0.0.1:6001/display'
 kafka_producer = KafkaProducer(bootstrap_servers='localhost:9092')
 @app.route('/receive_input', methods=['POST'])
 def receive_input():
     print('start of receive_input()')
-   
+    t_stamp = time.time()
     if len(request.files) == 0:
         return "No data received", 400
 
     # Iterate through each file in the request
     print('before for', request.files['image'].filename)
+    print('service_name: ', request.form.get('service_name'))
+    print('app_name: ', request.form.get('app_name'))
     print(request)
     for file_key, file_obj in request.files.items():
         # Determine the type of the file
         print('file_key: ', file_key, file_obj.filename, file_obj)
         file_type = determine_file_type(file_obj.filename)
-        print('file_type: ', file_type)
-
         # Process the file based on its type
         if file_type == 'image':
             print('before process_image')
-            process_image(file_obj)
+            process_image(file_obj,t_stamp, request.form.get('app_name'),request.form.get('service_name'))
         elif file_type == 'audio':
             process_audio(file_obj)
         elif file_type == 'text':
@@ -72,9 +182,28 @@ def receive_input():
             # Unsupported file type
             print(file_type)
             return f"Unsupported file type: {file_type}", 400
-
-    print('end of receive_input()')
-    return "Data received and sent to Kafka successfully", 200
+    predicted = None
+    consumer = KafkaConsumer('output', bootstrap_servers='localhost:9092',auto_offset_reset='earliest')
+    print("start of kafka_consumer()")
+    for message in consumer:
+        #print("message: ",message)
+        try:
+            #print("entering try block")
+            data = json.loads(message.value.decode('utf-8'))
+            if data["tstamp"] == t_stamp:
+                print("final frontier ", data["data"], type(data["data"]) )
+                predicted = data["data"]
+                return str(predicted), 200
+                
+        except KeyError:
+            pass
+        except Exception as e:
+            print("Error processing message:", str(e))
+        
+        
+    consumer.close()    
+    
+    return predicted, 200
 
 def determine_file_type(filename):
     print('start of determine_file_type()', filename)
@@ -88,7 +217,7 @@ def determine_file_type(filename):
     else:
         return 'unknown'
 
-def process_image(image_file):
+def process_image(image_file, t_stamp, app_name,service_name):
     print('start of process_image()')
     # Read the image data and encode it as base64
     image_data = image_file.read()
@@ -96,7 +225,9 @@ def process_image(image_file):
 
     print('before kafka sending')
     # Send the base64 encoded image data to Kafka
-    kafka_producer.send("input", value=base64_image.encode('utf-8'))
+    request = {"data": base64_image,"tstamp":t_stamp, "app_name": app_name,"service_name": service_name}
+
+    kafka_producer.send("input", value=json.dumps(request).encode('utf-8'))
     print('before flush')
     kafka_producer.flush()
 
@@ -128,30 +259,11 @@ def send_output_to_url(data):
     try:
         print("before sending data to URL ", data)
         response = requests.post(destination_url, json=data)
-        if response.status_code == 200:
-            print("Data sent successfully to URL, send_output_to_url()")
-            print("start of render_template")
-            render_template('display.html', data=data)
-            print("end of render_template")
-            return response
-        else:
-            print("Failed to send data to URL:", response.status_code)
-    except Exception as e:
-        print("Exception occurred while sending data to URL:", str(e))
-
-def kafka_consumer():
-    consumer = KafkaConsumer('output', bootstrap_servers='localhost:9092')
-    print("start of kafka_consumer()")
-    for message in consumer:
-        print("message: ",message)
-        try:
-            print("entering try block")
-            data = json.loads(message.value.decode('utf-8'))
-            print("before send_output_to_url", data)
-            send_output_to_url(data)
-            print("end")
-        except Exception as e:
-            print("Error processing message:", str(e))
+        return response
+    except: 
+        print("Error sending data to URL")
+        return
+    
 
 # Example usage:
 if __name__ == "__main__":
@@ -161,11 +273,6 @@ if __name__ == "__main__":
     # logger.info("WebEngine started 2")
     # logger.info("WebEngine started 3")
 
-    import threading
-    consumer_thread = threading.Thread(target=kafka_consumer)
-    consumer_thread.start()
-    app.run(port=7000)
+  
+    app.run(port=PORT)
     
-
-
-

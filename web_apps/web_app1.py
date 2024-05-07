@@ -23,7 +23,7 @@ def upload():
         print('image_file', image_file)
         print('Received image:', image_file.filename)
         # Forward the image to the /receive_input route
-        response = requests.post('http://127.0.0.1:7000/receive_input', files={'image': image_file})
+        response = requests.post('http://127.0.0.1:7002/receive_input', files={'image': image_file})
 
         # Check if the request was successful
         if response.status_code == 200:

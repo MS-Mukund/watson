@@ -5,6 +5,16 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
+
+// import express from 'express';
+// import cors from 'cors';
+
+// // const express = require('express');
+// // const cors = require('cors');
+
+// const app = express();
+// app.use(cors());
+
 root.render(
   <React.StrictMode>
     <App />

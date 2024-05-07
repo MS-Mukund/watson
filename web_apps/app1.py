@@ -4,7 +4,7 @@ import tensorflow as tf
 import sys
 import os
 import requests
-
+import json
 # mnist model import
 from keras.datasets import mnist
 from keras.models import load_model
@@ -23,7 +23,7 @@ from tensorflow.keras.models import load_model
 
 # URL is taken as an argument
 URL = '/predict'
-url_infer = 'http://127.0.0.1:6000/receive_output'
+url_infer = 'http://127.0.0.1:6005/receive_output'
 
 model = tf.keras.models.Sequential([
     tf.keras.layers.Flatten(input_shape=(28, 28)),
@@ -51,12 +51,14 @@ def preprocess_image(image):
 @app.route('/predict', methods=['POST'])
 def predict():
     # Get image data from request
-    print('request', request)
-    print('request.files', request.files)
-    print('start of predict2(): ', request.data)
+    print('request: ',request.data)
+    print('start of predict2(): ', request.json)
+    req = json.loads(request.json)
+    print("request",req)
     
     # convert "b'encoded_image'" to image
-    decoded_image = base64.b64decode(request.data)
+    
+    decoded_image = base64.b64decode(req['data'])
     image = Image.open(BytesIO(decoded_image))
     print('after decodng')
     
@@ -71,12 +73,12 @@ def predict():
     
     # prepare the response (json)
     data = {'predicted_digit': str(predicted_digit)}
-    
-    print('before send_output ', data)
-    send_output(url_infer,data)
-    
+    req['data'] = str(predicted_digit)
+    print("request.data")
+    print('before send_output: ', req)
+    send_output(url_infer,req)
     print('after send_output')
-    return data
+    return req
     
 def send_output(url,data):
     print('inside send_output')
@@ -130,5 +132,5 @@ if __name__ == '__main__':
     model = load_model('MNIST_MODEL.keras')
     
     
-    app.run(debug=True, port=6001)
+    app.run(debug=True, port=6003)
     

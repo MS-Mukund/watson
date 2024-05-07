@@ -1,0 +1,11 @@
+# pip install tensorflow
+tensorflow
+# sudo apt install npm
+npm=10.7.0      # node v21.7.3
+# pip install flask_cors
+flask_cors
+# pip install logbook
+logbook
+# sudo apt-get install libmkl-dev libmkl-avx2
+libmkl-dev 
+libmkl-avx2
