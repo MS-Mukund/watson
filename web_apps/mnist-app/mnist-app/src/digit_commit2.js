@@ -31,6 +31,7 @@ function MNISTDigitRecognition() {
         console.log("Form Data: ", formData);
 
         fetch(url, {
+            mode: 'no-cors', 
             method: 'POST',
             body: formData,
         })
@@ -42,16 +43,16 @@ function MNISTDigitRecognition() {
                 console.log("app_name: ", formData.get('app_name'));
                 console.log("Form Data: ", formData);
             } else {
+                console.log("response: ", response);
                 alert("in else");
-                console.error('Failed to upload file');
+                console.log(response.json);
+                // console.error('Failed to upload file');
             }
         })
         .catch(error => {
             alert("caught the error");
             alert(error);
             console.error('Error:', error);
-            // print status code
-            console.log("status code: ", error.response.status);
         });
     };
 

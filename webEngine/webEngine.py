@@ -29,7 +29,7 @@ import subprocess
 # def img_to_json(img):
     
 app = Flask(__name__)
-cors = CORS(app)
+cors = CORS(app, resources={r"/receive_input": {"origins": "*"}})
 
 import logbook
 logbook.set_datetime_format("local")
@@ -193,7 +193,8 @@ def receive_input():
             if data["tstamp"] == t_stamp:
                 print("final frontier ", data["data"], type(data["data"]) )
                 predicted = data["data"]
-                return str(predicted), 200
+                json_data = {"predicted": predicted}
+                return json_data, 200
                 
         except KeyError:
             pass

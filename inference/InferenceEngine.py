@@ -112,12 +112,13 @@ def predict_conn(requirements_path, services_path, num_instances, service_name, 
     
     for _ in range(num_instances):
         port = give_available_port()
+        vm_id = assignVM(app_name, services_path)
         run_app(services_path, port)
         
         print("App running on port:", port)
         
-        with open('config.txt', 'a+') as f:
-            f.write(f"{service_name} {services_path} {port} running\n")   
+        # with open('config.txt', 'a+') as f:
+            # f.write(f"{service_name} {services_path} {port} running\n")   
 
         data = {
             "app_name": app_name,
@@ -184,6 +185,7 @@ def send_to_predict():
     for message in consumer:           # filter based on app_name
         print("2 message: ", message)
         try:
+            
             url = None
             print("3 before filter")
             # Fetch data from MongoDB collection
